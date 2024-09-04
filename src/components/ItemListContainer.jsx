@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import Container from 'react-bootstrap/Container';
-import data from '../data/data.json';
+import {db } from '../firebase/Config';
+import { getDocs, collection, where, query } from "firebase/firestore";
 
-import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
-import { Link, useParams } from 'react-router-dom';
+
+import { useParams } from 'react-router-dom';
+import ItemList from './ItemList';
 
 export default function ItemListContainer({ greeting }) {
 	const [products, setProducts] = useState([]);
@@ -13,33 +14,20 @@ export default function ItemListContainer({ greeting }) {
 	const id = useParams().id;
 
 	useEffect(() => {
-		console.log('ID:', id);
-		setProducts(id ? data.filter((p) => p.cat === id) : data);
-		setCargando(false);
+		const ref = !id ? collection(db, 'products'): query(collection(db, 'products'), where('cat', '==', id));
+
+		getDocs(ref)
+			.then((res) =>{
+				setProducts(res.docs.map((doc) => { return { ...doc.data(), id: doc.id } } ));
+			} )
+			.finally(() => setCargando(false));
 	}, [id]);
-	
 
 	if (cargando) return 'Cargando...';
 	if (!products) return 'Producto no encontrado';
 	return (
 		<Container className="mt-4 d-flex flex-wrap justify-content-center w-100 align-items-center gap-4">
-			{products.map((p) => (
-				<Card style={{ width: '18rem' }} key={p.id}>
-					<Card.Img variant="top" src={p.image} />
-					<Card.Body>
-						<Card.Title>{p.Name}</Card.Title>
-						<Card.Text>
-							${p.price}
-						</Card.Text>
-						<Card.Text>
-							{p.cat}
-						</Card.Text>
-						<Link to={`/item/${p.id}`}>
-							<Button variant="primary">Ver Detalle</Button>
-						</Link>
-					</Card.Body>
-				</Card>
-			))}
+			<ItemList products={products} />
 		</Container>
 	);
 }
